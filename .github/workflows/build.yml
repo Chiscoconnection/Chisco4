@@ -1,0 +1,60 @@
+name: Build and Test Chiscoconnection OS
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Compile on Linux/macOS
+      if: runner.os != 'Windows'
+      run: |
+        gcc -o chiscoconnection_os chiscoconnection_os_fixed.c -std=c99 -Wall
+        ls -lh chiscoconnection_os
+    
+    - name: Compile on Windows
+      if: runner.os == 'Windows'
+      run: |
+        gcc -o chiscoconnection_os.exe chiscoconnection_os_fixed.c -std=c99 -Wall
+        dir chiscoconnection_os.exe
+    
+    - name: Test on Linux/macOS
+      if: runner.os != 'Windows'
+      run: |
+        echo -e "create TestApp 128\nps\nls\nexit" | ./chiscoconnection_os
+    
+    - name: Test on Windows
+      if: runner.os == 'Windows'
+      run: |
+        (echo create TestApp 128 & echo ps & echo ls & echo exit) | chiscoconnection_os.exe
+    
+    - name: Upload Artifact (Linux)
+      if: runner.os == 'Linux'
+      uses: actions/upload-artifact@v3
+      with:
+        name: chiscoconnection_os-linux
+        path: chiscoconnection_os
+    
+    - name: Upload Artifact (macOS)
+      if: runner.os == 'macOS'
+      uses: actions/upload-artifact@v3
+      with:
+        name: chiscoconnection_os-macos
+        path: chiscoconnection_os
+    
+    - name: Upload Artifact (Windows)
+      if: runner.os == 'Windows'
+      uses: actions/upload-artifact@v3
+      with:
+        name: chiscoconnection_os-windows
+        path: chiscoconnection_os.exe
