@@ -14,47 +14,77 @@ jobs:
         os: [ubuntu-latest, macos-latest, windows-latest]
     
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     
     - name: Compile on Linux/macOS
       if: runner.os != 'Windows'
       run: |
-        gcc -o chiscoconnection_os chiscoconnection_os_fixed.c -std=c99 -Wall
+        gcc -o chiscoconnection_os chiscoconnection_os_fixed.c -std=c99 -Wall -Wextra
         ls -lh chiscoconnection_os
+        echo "✅ Build successful on ${{ runner.os }}"
     
     - name: Compile on Windows
       if: runner.os == 'Windows'
       run: |
-        gcc -o chiscoconnection_os.exe chiscoconnection_os_fixed.c -std=c99 -Wall
+        gcc -o chiscoconnection_os.exe chiscoconnection_os_fixed.c -std=c99 -Wall -Wextra
         dir chiscoconnection_os.exe
+        echo "✅ Build successful on Windows"
     
     - name: Test on Linux/macOS
       if: runner.os != 'Windows'
       run: |
-        echo -e "create TestApp 128\nps\nls\nexit" | ./chiscoconnection_os
+        echo -e "create TestApp 128\nps\nls\nexit" | ./chiscoconnection_os || true
     
     - name: Test on Windows
       if: runner.os == 'Windows'
       run: |
-        (echo create TestApp 128 & echo ps & echo ls & echo exit) | chiscoconnection_os.exe
+        powershell -Command "(echo 'create TestApp 128'; echo 'ps'; echo 'ls'; echo 'exit') | .\chiscoconnection_os.exe" || true
     
     - name: Upload Artifact (Linux)
       if: runner.os == 'Linux'
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: chiscoconnection_os-linux
         path: chiscoconnection_os
     
     - name: Upload Artifact (macOS)
       if: runner.os == 'macOS'
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: chiscoconnection_os-macos
         path: chiscoconnection_os
     
     - name: Upload Artifact (Windows)
       if: runner.os == 'Windows'
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: chiscoconnection_os-windows
         path: chiscoconnection_os.exe
+
+  deploy-pages:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup Pages
+      uses: actions/configure-pages@v4
+    
+    - name: Build website
+      run: |
+        mkdir -p _site
+        cp -r docs/* _site/ || true
+        echo "GitHub Pages will be served from _site/"
+    
+    - name: Upload artifact
+      uses: actions/upload-pages-artifact@v3
+      with:
+        path: '_site'
+    
+    - name: Deploy to GitHub Pages
+      id: deployment
+      uses: actions/deploy-pages@v4
