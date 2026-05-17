@@ -41,12 +41,12 @@ typedef struct {
 // Globals
 Process process_table[MAX_PROCESSES];
 File file_system[MAX_FILES];
-int process_count = 0;  // FIX: Track actual process count instead of using current_pid as index
-int current_pid = 1000; // FIX: Start PIDs from 1000 to avoid confusion
+int process_count = 0;
+int current_pid = 1000;
 char memory[MAX_MEMORY];
 
-// FIX: Initialize file system
-void init_filesystem() {
+// Initialize file system
+void init_filesystem(void) {
     for (int i = 0; i < MAX_FILES; i++) {
         file_system[i].in_use = 0;
         memset(file_system[i].name, 0, 32);
@@ -54,8 +54,8 @@ void init_filesystem() {
     }
 }
 
-// FIX: Initialize process table
-void init_process_table() {
+// Initialize process table
+void init_process_table(void) {
     for (int i = 0; i < MAX_PROCESSES; i++) {
         process_table[i].pid = -1;
         process_table[i].state = -1;
@@ -65,7 +65,6 @@ void init_process_table() {
 
 // Create a new process
 void create_process(const char *name, int mem_size) {
-    // FIX: Check actual process count, not current_pid
     if (process_count >= MAX_PROCESSES) {
         printf("[ERROR] Process table full!\n");
         return;
@@ -78,7 +77,7 @@ void create_process(const char *name, int mem_size) {
     int idx = process_count;
     process_table[idx].pid = current_pid;
     strncpy(process_table[idx].name, name, 31);
-    process_table[idx].name[31] = '\0'; // FIX: Null terminate
+    process_table[idx].name[31] = '\0';
     process_table[idx].state = 0; // ready
     process_table[idx].memory_start = idx * (MAX_MEMORY / MAX_PROCESSES);
     process_table[idx].memory_size = mem_size;
@@ -90,7 +89,7 @@ void create_process(const char *name, int mem_size) {
     process_count++;
 }
 
-// FIX: Find process by PID (safe lookup)
+// Find process by PID (safe lookup)
 int find_process_index(int pid) {
     for (int i = 0; i < process_count; i++) {
         if (process_table[i].pid == pid) {
@@ -100,13 +99,12 @@ int find_process_index(int pid) {
     return -1; // Not found
 }
 
-// Scheduler - FIX: Correct state machine
-void scheduler() {
+// Scheduler
+void scheduler(void) {
     printf("\n[SCHEDULER] Running scheduler...\n");
     int found = 0;
     
     for (int i = 0; i < process_count; i++) {
-        // FIX: Only process READY processes, not waiting or terminated
         if (process_table[i].state == 0) { // READY
             process_table[i].state = 1; // Change to RUNNING
             printf("[SCHEDULER] Running process '%s' (PID %d)\n", 
@@ -114,7 +112,6 @@ void scheduler() {
             
             OS_SLEEP(100); // Simulate execution
             
-            // FIX: Only change to WAITING if not terminated by syscall
             if (process_table[i].state == 1) {
                 process_table[i].state = 0; // Back to READY for round-robin
             }
@@ -127,7 +124,7 @@ void scheduler() {
     }
 }
 
-// System call handler - FIX: Proper bounds checking
+// System call handler
 void syscall_handler(int pid, const char *call) {
     int idx = find_process_index(pid);
     
@@ -149,7 +146,7 @@ void syscall_handler(int pid, const char *call) {
 }
 
 // List all processes
-void list_processes() {
+void list_processes(void) {
     printf("\n╔════════════════════════════════════════════════════════╗\n");
     printf("║            PROCESS TABLE (Active Processes)            ║\n");
     printf("╠════════════════════════════════════════════════════════╣\n");
@@ -184,14 +181,14 @@ void list_processes() {
     printf("╚════════════════════════════════════════════════════════╝\n\n");
 }
 
-// File system functions - FIX: Proper file creation
+// File system functions
 void create_file(const char *name, const char *content) {
     for (int i = 0; i < MAX_FILES; i++) {
         if (!file_system[i].in_use) {
             strncpy(file_system[i].name, name, 31);
-            file_system[i].name[31] = '\0'; // Null terminate
+            file_system[i].name[31] = '\0';
             strncpy(file_system[i].content, content, 127);
-            file_system[i].content[127] = '\0'; // Null terminate
+            file_system[i].content[127] = '\0';
             file_system[i].in_use = 1;
             printf("[FS] File '%s' created (%zu bytes)\n", name, strlen(content));
             return;
@@ -212,7 +209,7 @@ void read_file(const char *name) {
 }
 
 // List all files
-void list_files() {
+void list_files(void) {
     printf("\n╔════════════════════════════════════════════════════════╗\n");
     printf("║                  FILE SYSTEM                           ║\n");
     printf("╠════════════════════════════════════════════════════════╣\n");
@@ -236,7 +233,7 @@ void list_files() {
     printf("╚════════════════════════════════════════════════════════╝\n\n");
 }
 
-void show_help() {
+void show_help(void) {
     printf("\n╔════════════════════════════════════════════════════════╗\n");
     printf("║          CHISCOCONNECTION OS - COMMAND HELP            ║\n");
     printf("╠════════════════════════════════════════════════════════╣\n");
@@ -253,7 +250,7 @@ void show_help() {
 }
 
 // Shell loop
-void shell() {
+void shell(void) {
     char command[256];
     char arg1[64], arg2[128], arg3[64];
     
@@ -261,7 +258,9 @@ void shell() {
     
     while (1) {
         printf("chiscoconnectionOS> ");
-        fgets(command, sizeof(command), stdin);
+        if (fgets(command, sizeof(command), stdin) == NULL) {
+            break;
+        }
         command[strcspn(command, "\n")] = 0; // strip newline
         
         if (strlen(command) == 0) continue;
@@ -270,7 +269,7 @@ void shell() {
             printf("\n[KERNEL] Shutting down Chiscoconnection OS...\n");
             break;
         } 
-        else if (sscanf(command, "create %s %s", arg1, arg3) == 2) {
+        else if (sscanf(command, "create %63s %63s", arg1, arg3) == 2) {
             int size = atoi(arg3);
             create_process(arg1, size);
         } 
@@ -280,14 +279,14 @@ void shell() {
         else if (strcmp(command, "schedule") == 0) {
             scheduler();
         } 
-        else if (sscanf(command, "syscall %s %s", arg1, arg2) == 2) {
+        else if (sscanf(command, "syscall %63s %63s", arg1, arg2) == 2) {
             int pid = atoi(arg1);
             syscall_handler(pid, arg2);
         }
-        else if (sscanf(command, "file %s %127[^\n]", arg1, arg2) == 2) {
+        else if (sscanf(command, "file %63s %127[^\n]", arg1, arg2) == 2) {
             create_file(arg1, arg2);
         } 
-        else if (sscanf(command, "read %s", arg1) == 1) {
+        else if (sscanf(command, "read %63s", arg1) == 1) {
             read_file(arg1);
         } 
         else if (strcmp(command, "ls") == 0) {
@@ -302,7 +301,7 @@ void shell() {
     }
 }
 
-int main() {
+int main(void) {
     printf("\n╔════════════════════════════════════════════════════════╗\n");
     printf("║  Chiscoconnection OS Kernel - FIXED VERSION            ║\n");
     printf("╚════════════════════════════════════════════════════════╝\n\n");
